@@ -1,0 +1,11 @@
+C:\Users\johna\Documents\Visual Studio 2015\Projects\DynmapSource-Windows\Dynmap\obj\Debug\Dynmap.csprojResolveAssemblyReference.cache
+C:\Users\johna\Documents\Visual Studio 2015\Projects\DynmapSource-Windows\Dynmap\bin\Debug\Dynmap.dll
+C:\Users\johna\Documents\Visual Studio 2015\Projects\DynmapSource-Windows\Dynmap\bin\Debug\Dynmap.pdb
+C:\Users\johna\Documents\Visual Studio 2015\Projects\DynmapSource-Windows\Dynmap\bin\Debug\Assembly-CSharp-firstpass.dll
+C:\Users\johna\Documents\Visual Studio 2015\Projects\DynmapSource-Windows\Dynmap\bin\Debug\Assembly-CSharp.dll
+C:\Users\johna\Documents\Visual Studio 2015\Projects\DynmapSource-Windows\Dynmap\bin\Debug\Rocket.API.dll
+C:\Users\johna\Documents\Visual Studio 2015\Projects\DynmapSource-Windows\Dynmap\bin\Debug\Rocket.Core.dll
+C:\Users\johna\Documents\Visual Studio 2015\Projects\DynmapSource-Windows\Dynmap\bin\Debug\Rocket.Unturned.dll
+C:\Users\johna\Documents\Visual Studio 2015\Projects\DynmapSource-Windows\Dynmap\bin\Debug\UnityEngine.dll
+C:\Users\johna\Documents\Visual Studio 2015\Projects\DynmapSource-Windows\Dynmap\obj\Debug\Dynmap.dll
+C:\Users\johna\Documents\Visual Studio 2015\Projects\DynmapSource-Windows\Dynmap\obj\Debug\Dynmap.pdb
