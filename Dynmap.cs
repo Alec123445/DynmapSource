@@ -1,4 +1,6 @@
-﻿using Rocket.API;
+﻿using Steamworks;
+using Rocket.API;
+using Rocket;
 using Rocket.API.Collections;
 using Rocket.Core.Logging;
 using Rocket.Core.Plugins;
@@ -6,7 +8,6 @@ using Rocket.Unturned;
 using Rocket.Unturned.Chat;
 using Rocket.Unturned.Player;
 using SDG.Unturned;
-using Steamworks;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -24,12 +25,14 @@ namespace dynmap.core
         public string PrivateKey;
         public int syncInterval;
         public string WebCoreAddress;
+        public bool displayInChat;
 
         public void LoadDefaults()
         {
             PrivateKey = "MySecretPrivateKey";
             syncInterval = 5000;
             WebCoreAddress = "http://localhost";
+            displayInChat = false;
         }
     }
 
@@ -39,7 +42,7 @@ namespace dynmap.core
         public static Dynmap Instance;
         public List<CSteamID> Nicks = new List<CSteamID>();
         public Timer myTimer;
-        public string directory = Directory.GetCurrentDirectory();
+        public string directory = System.IO.Directory.GetCurrentDirectory();
         public string[] maps;
         public string sendMaps;
         public string data = string.Empty;
@@ -55,14 +58,20 @@ namespace dynmap.core
         public string characterName;
         public int rotation;
         public string playerStatus;
+        public Boolean PlayerDeath;
 
 
         protected override void Load()
-        {   
+        {
+            Rocket.Core.Logging.Logger.Log("Loading ...");
+
             //Načtení privátního klíče a složky Maps
             PrivateKey = Configuration.Instance.PrivateKey;
-            maps = Directory.GetDirectories(directory + @"/../../../Maps");
-
+            maps = System.IO.Directory.GetDirectories(System.IO.Path.GetFullPath(directory + @"/../../../Maps"));
+            foreach(string map in maps)
+            {
+                Rocket.Core.Logging.Logger.Log("Finding map : " + map);
+            }
 
             //Vypsání map na serveru
             foreach (string splitMap in maps)
@@ -97,8 +106,8 @@ namespace dynmap.core
             
             if(output == "Error.PrivateKeyNotMatch")
             {
-                Logger.LogError("Priavte keys in dynmap-config.php and in Dynmap.configuration.xml doesn't match!");
-                Logger.LogError("Unloading plugin!");
+                Rocket.Core.Logging.Logger.LogError("Priavte keys in dynmap-config.php and in Dynmap.configuration.xml doesn't match!");
+                Rocket.Core.Logging.Logger.LogError("Unloading plugin!");
                 return;
             }
 
@@ -108,9 +117,10 @@ namespace dynmap.core
             uploadMaps = output.Split(';');
             for (var o = 0; o < uploadMaps.Length; o++)
             {
-                if (sentMessage == false) { Logger.LogWarning("Uploading map files to the server! This may take some time!"); sentMessage = true; };
+                if (sentMessage == false) { Rocket.Core.Logging.Logger.LogWarning("Uploading map files to the server! This may take some time!"); sentMessage = true; };
                 if (uploadMaps[o] != string.Empty)
                 {
+                    Rocket.Core.Logging.Logger.Log("Uploading map : " + uploadMaps[o]);
                     //Generování TransferID
 
                     RNGCryptoServiceProvider rng = new RNGCryptoServiceProvider();
@@ -149,24 +159,24 @@ namespace dynmap.core
                     //Nahrání souborů map na server
                     System.Net.WebClient Client = new System.Net.WebClient ();
                     Client.Headers.Add("Content-Type", "binary/octet-stream");
-                    byte[] result = Client.UploadFile(Configuration.Instance.WebCoreAddress + "/dynmap-core.php?user=server&do=uploadfile&TransferID=" + Uri.EscapeDataString(TransferID) + "&mapname=" + uploadMaps[o], "POST", directory + @"/../../../Maps/" + uploadMaps[o] + @"/Map.png"); 
+                    byte[] result = Client.UploadFile(Configuration.Instance.WebCoreAddress + "/dynmap-core.php?user=server&do=uploadfile&TransferID=" + Uri.EscapeDataString(TransferID) + "&mapname=" + Uri.EscapeDataString(uploadMaps[o].Split('\\')[uploadMaps[0].Split('\\').Length - 1]), "POST", @"../../../Maps/" + uploadMaps[o] + @"/Map.png");
                     String s = System.Text.Encoding.UTF8.GetString (result,0,result.Length);
 
                     if (s == "Error.UploadDone")
                     {
-                        Logger.LogWarning("Uploaded " + uploadMaps[o]);
+                       Rocket.Core.Logging.Logger.LogWarning("Uploaded " + uploadMaps[o]);
                     }
                     else if (s == "1Error.UploadFailed")
                     {
-                        Logger.LogError("Uploading " + uploadMaps[o] + " failed because the uploaded file exceeds the upload_max_filesize directive in php.ini.");
-                        Logger.LogError("See http://php.net/manual/en/ini.core.php#ini.upload-max-filesize for further information!");
+                       Rocket.Core.Logging.Logger.LogError("Uploading " + uploadMaps[o] + " failed because the uploaded file exceeds the upload_max_filesize directive in php.ini.");
+                       Rocket.Core.Logging.Logger.LogError("See http://php.net/manual/en/ini.core.php#ini.upload-max-filesize for further information!");
                     }
                     else
                     {
-                        Logger.LogError("Uploading " + uploadMaps[o] + " failed!");
+                       Rocket.Core.Logging.Logger.LogError("Uploading " + uploadMaps[o] + " failed!");
                     } 
                 }
-                if (o == uploadMaps.Length - 1) { Logger.LogWarning("Uploading done!");};
+                if (o == uploadMaps.Length - 1) { Rocket.Core.Logging.Logger.LogWarning("Uploading done!");};
                 
             }
 
@@ -178,17 +188,20 @@ namespace dynmap.core
 
             //Přidání hráčů do listu při načtení pluginu
             int f = 0;
-            foreach (SDG.Unturned.SteamPlayer plr in SDG.Unturned.Provider.Players)
+            foreach (SDG.Unturned.SteamPlayer plr in SDG.Unturned.Provider.clients)
             {
                 UnturnedPlayer unturnedPlayer = UnturnedPlayer.FromSteamPlayer(plr);
                 Nicks.Add(unturnedPlayer.CSteamID);
                 f++;
+                
             }
 
             //Přidání hráčů do listu při připojení na server
             U.Events.OnPlayerConnected += (UnturnedPlayer player) =>
                 {
                     Nicks.Add(player.CSteamID);
+                    
+                    
                 };
             //Odebrání hráčů z listu při odpojení ze serveru
             U.Events.OnPlayerDisconnected += (UnturnedPlayer player) =>
@@ -221,17 +234,20 @@ namespace dynmap.core
                 UnturnedPlayer player = UnturnedPlayer.FromCSteamID(Nicks[i - 1]);
                 characterName = player.CharacterName.Replace(";", "&#59").Replace("[", "&#91").Replace("]", "&#93").Replace("=", "&#61");
                 rotation = Convert.ToInt32(player.Rotation);
+                
                 if (player.IsAdmin == true) { playerStatus = "admin"; } else if (player.IsPro == true) { playerStatus = "pro"; } else { playerStatus = "player"; }
-                UnturnedChat.Say(player, player.Position + "=Position");
-                if (player.Features.VanishMode == false) { data = data + "[Charactername=" + characterName + ";CSteamID=" + player.CSteamID + ";Position=" + player.Position + ";Rotation=" + rotation + ";PlayerStatus=" + playerStatus + "]"; };
+                if (Configuration.Instance.displayInChat == true) {  UnturnedChat.Say(player, player.Position + "=Position"); }
+                if (player.Features.VanishMode == false) { data = data + "[Charactername=" + characterName + ";CSteamID=" + player.CSteamID + ";Position=" + player.Position + ";Rotation=" + rotation + ";PlayerStatus=" + playerStatus +  ";Death=" + player.Player.life.isDead.ToString() + ";Vehicle=" + player.IsInVehicle.ToString() + "]"; };
+
+                //if (player.Features.VanishMode == false && player.IsInVehicle == true) { data = data + "[Charactername=" + characterName + ";CSteamID=" + player.CSteamID + ";Position=" + player.Position + ";Rotation=" + rotation + ";PlayerStatus=" + playerStatus + ";Death=" + player.Player.life.isDead.ToString() + ";Vehicle=" + player.IsInVehicle.ToString() + ";VehicleEngine=" + player.CurrentVehicle.asset.engine.ToString() + "]"; };
             }
 
             //Odešle data na server
             if (data != string.Empty || firstrun == true)
             {
                 url =  Configuration.Instance.WebCoreAddress + "/dynmap-core.php?user=server";
-                postData = "map=" + SDG.Unturned.Provider.map + "&data=" + Uri.EscapeDataString(data) + "&privatekey=" + PrivateKey;
-                if (shutdown == true) { postData = "map=" + SDG.Unturned.Provider.map + "&privatekey=" + PrivateKey; };
+                postData = "map=" + Uri.EscapeDataString(SDG.Unturned.Provider.map) + "&data=" + Uri.EscapeDataString(data) + "&privatekey=" + PrivateKey;
+                if (shutdown == true) { postData = "map=" + Uri.EscapeDataString(SDG.Unturned.Provider.map) + "&privatekey=" + PrivateKey; };
                 var post = Encoding.ASCII.GetBytes(postData);
 
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
@@ -254,8 +270,8 @@ namespace dynmap.core
                 //Deaktivuje plugin, pokud se PrivateKey neshoduje
                 if (output == "Error.PrivateKeyNotMatch")
                 {
-                    Logger.LogError("Priavte keys in dynmap-config.php and in Dynmap.configuration.xml doesn't match!");
-                    Logger.LogError("Unloading plugin!");
+                    Rocket.Core.Logging.Logger.LogError("Priavte keys in dynmap-config.php and in Dynmap.configuration.xml doesn't match!");
+                    Rocket.Core.Logging.Logger.LogError("Unloading plugin!");
                     myTimer.Enabled = false;
                 }
 
